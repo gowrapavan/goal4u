@@ -83,6 +83,9 @@ export default async (req: Request): Promise<Response> => {
   for (const [k, v] of Object.entries({ ...API_SECURITY_HEADERS, ...corsHeaders(h('origin'), process.env) })) headers.set(k, v);
   headers.delete('set-cookie');
   if (req.method === 'GET' && upstream.status === 200) headers.set('Netlify-CDN-Cache-Control', cdnCacheFor(url.pathname));
+  // The CDN answers cache hits WITHOUT running this function, so a pasted address could be served from a copy made for the page's own fetch.
+  // Keying the cache on the browser's fetch headers keeps address-bar visits (Sec-Fetch-Dest: document) apart from the page's own calls, so they reach the check above.
+  headers.set('Netlify-Vary', 'header=Sec-Fetch-Dest|Sec-Fetch-Mode|Sec-Fetch-Site');
   return new Response(req.method === 'HEAD' ? null : upstream.body, { status: upstream.status, headers });
 };
 
