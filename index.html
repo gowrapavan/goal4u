@@ -22,6 +22,13 @@
     <script>try{var t=localStorage.getItem("g4u-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>Goal4U | Live Football Scores & Stats</title>
     <meta name="description" content="Goal4U provides live football scores, comprehensive match statistics, latest news, and highlights for Premier League, Champions League, La Liga, and more." />
+    <style>
+      /* the crawlable text is in the HTML for search engines; it stays out of sight (still readable by screen readers) until the app takes over, so there is no flash of unstyled text on a slow connection */
+      #root>main[data-seo-fallback]{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+      html[data-theme="dark"] body{background:#0b0f1a}
+      #root:has(>main[data-seo-fallback]:only-child)::after{content:"";position:fixed;top:50%;left:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border:3px solid rgba(0,53,190,.2);border-top-color:#0035be;border-radius:50%;animation:g4uspin .8s linear infinite}
+      @keyframes g4uspin{to{transform:rotate(360deg)}}
+    </style>
   </head>
   <body>
     <div id="root"></div>

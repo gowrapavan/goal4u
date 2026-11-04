@@ -25,6 +25,8 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # APP_URL is the public address of the site, so it is not a secret: its value may appear in tests and docs. The real secrets (GOAL4U_TOKEN, NEWSAPI_KEY) stay scanned.
+  SECRETS_SCAN_OMIT_KEYS = "APP_URL"
 
 [functions]
   directory = "netlify/functions"

@@ -2,7 +2,7 @@
  * Where the football data comes from — ONE place, so every reader (Express API, Netlify build, Netlify page function) agrees.
  *
  *   VITE_GOAL4U_DATA_URL  unset  → GitHub straight:   https://raw.githubusercontent.com/gowrapavan/goal4u-data/main
- *   VITE_GOAL4U_DATA_URL  set    → the /goal4u-data mirror in gowra-api (Render), e.g.  https://gowra-api.onrender.com/goal4u-data
+ *   VITE_GOAL4U_DATA_URL  set    → the /goal4u-data mirror in gowra-api (Render), e.g.  https://data.example.test/goal4u-data
  *
  * The mirror maps 1:1 onto the repo (`<base>/data/2026-2027/PL/matches` → data/2026-2027/PL/matches.json), caches for 20 s on
  * match days, and answers folder listings at `<base>/_ls/<dir>`, so nothing here talks to api.github.com when it is set.
