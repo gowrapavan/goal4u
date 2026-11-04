@@ -1,0 +1,28 @@
+# Render blueprint for the Goal4U app/API (server.ts): serves /api/*, the SEO pages and the built React app.
+# gowra-api (the /goal4u-data mirror) is a SEPARATE service you already deploy; this one only reads from it.
+#
+# Render → New → Blueprint → pick this repo. Fill the three "sync: false" values in the dashboard.
+services:
+  - type: web
+    name: goal4u
+    runtime: node
+    plan: free
+    # --include=dev: the build needs vite/esbuild/tailwind, which are devDependencies (Render sets NODE_ENV=production).
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      # https://<your-gowra-api>.onrender.com/goal4u-data
+      - key: GOAL4U_DATA_BASE
+        sync: false
+      # same value if you want headshots/trophies served through the mirror too (optional, build time)
+      - key: VITE_DATA_BASE
+        sync: false
+      - key: NEWSAPI_KEY
+        sync: false
+      - key: ADMIN_TOKEN
+        generateValue: true

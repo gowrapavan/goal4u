@@ -1,0 +1,91 @@
+# Goal4U on Netlify.
+#
+#  • `npm run build:netlify` builds the React app, then writes robots.txt, the sitemap index + child sitemaps and
+#    _seo/index.json from the football data in the GitHub repo. The build FAILS if that data is incomplete, so a partial
+#    sitemap is never published and the previous good deploy keeps serving.
+#  • netlify/functions/page.ts serves every page (per-page <head>, crawlable text, 404/301 statuses). Real files win.
+#  • netlify/functions/rebuild.ts rebuilds on a schedule so new matches get discovered (needs BUILD_HOOK_URL).
+#
+# Site environment variables (Site configuration → Environment variables). They are read by the build and by the functions (only VITE_CONTACT_EMAIL is meant for the browser):
+#   GOAL4U_DATA_URL       https://<gowra-api>.onrender.com/goal4u-data   (the football data; unset = GitHub directly)
+#   GOAL4U_TOKEN          the access token gowra-api requires. SERVER ONLY: never a VITE_ name, never in the browser (the build fails if it leaks)
+#   NEWSAPI_KEY           your newsapi.org key (the News page)
+#   BUILD_HOOK_URL        https://api.netlify.com/build_hooks/…          (scheduled rebuilds)
+#   APP_URL               (optional) https://your-domain                  (canonicals, sitemap, robots; also the one site allowed to call /api from a browser)
+#   ALLOWED_ORIGINS       (optional) comma list of extra websites allowed to call /api from a browser (default none)
+#   VITE_CONTACT_EMAIL    (optional) shown on /contact
+#   GOOGLE_SITE_VERIFICATION / BING_SITE_VERIFICATION  (optional) the token from Search Console / Bing Webmaster Tools; written as a verification <meta> tag
+#
+#  • netlify/functions/api.ts is the backend (/api/data/*, /api/news/*): the same Express routers as server.ts, run as a function.
+#    There is no other server to host; gowra-api on Render only serves the data files.
+
+[build]
+  command = "npm run build:netlify"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."page"]
+  included_files = ["dist/app-shell.html", "dist/_seo/index.json"]
+
+# Vite fingerprints everything in /assets, so it can be cached forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/sitemap*.xml"
+  [headers.values]
+    Content-Type = "application/xml; charset=utf-8"
+    Cache-Control = "public, max-age=900"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/logo/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/robots.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=900"
+
+[[headers]]
+  for = "/llms.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=900"
+
+# internal files, not pages
+[[headers]]
+  for = "/app-shell.html"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# the page index is an implementation detail, not a page
+[[headers]]
+  for = "/_seo/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+    Cache-Control = "public, max-age=300"
+
+# Security headers for static files (the page and api functions set their own: src/server/api-guard.ts).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Content-Security-Policy = "frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
