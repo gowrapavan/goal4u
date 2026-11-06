@@ -4,6 +4,7 @@
  * so a visitor never waits for the slow path (function start, data service, live source) unless nobody has asked for a long time.
  */
 export function cdnCacheFor(pathname: string): string {
+  if (/^\/api\/streams(\/|$)/.test(pathname)) return 'no-store';   // the secret stream API may be key-protected: a shared copy would hand it to anyone
   if (/^\/api\/(data\/)?(img|ext)(\/|$)/.test(pathname)) return 'public, s-maxage=86400, stale-while-revalidate=604800';          // pictures hardly ever change; a CDN hit costs no function call
   if (/^\/api\/news(\/|$)/.test(pathname)) return 'public, s-maxage=900, stale-while-revalidate=21600';   // NewsAPI's free plan has a tiny daily quota
   if (/^\/api\/data\/(feed|match|matches|live)(\/|$)/.test(pathname)) return 'public, s-maxage=15, stale-while-revalidate=300';

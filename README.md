@@ -438,3 +438,20 @@ The empty state names the reason (`liveReason` in the API response): `upstream_u
 | **Stats tab** | "Ball in play" time. |
 
 Without the live feed the Line-ups tab still draws the `stats.json` line-up on the same pitch (rows rebuilt from the formation string; initials instead of photos) and says why. Positions come from the provider's `yardFormation` (`line` 1 = goalkeeper … , `fieldSide` 0 = left … 100 = right). The worker's `stats.json` line-ups carry no athlete ids, positions or substitution minutes — extending `build_lineup` in `workers/stats365.py` to also write `athlete_id`, `line`, `side` and the substitution minute would let the repo JSON alone drive the full pitch.
+
+
+## Data service sleeping (Render free plan): GitHub backup after 10 s
+
+The data service sleeps after ~15 minutes without visitors and needs 25-50 s to wake. A request for a repo file (`data/…`, `stream-data/…`, `public/…`)
+that gets no answer within **10 s**, a network error or a 502/503/504 is repeated at once against the same path of the GitHub data repo (a 1:1 copy),
+**without the token**. For the next 60 s requests go straight to GitHub (nobody waits 10 s again) and one quiet request wakes the service.
+401 (wrong token) and 404 are real answers and are not replaced. Code: `dataFetch` in `src/server/data-source.ts`; tests: `src/server/mirror-fallback.test.ts`.
+GitHub's copy can be a few minutes older than the data service's.
+
+## Secret stream page (optional)
+
+Self-contained in `src/streams/` (server: `config`, `normalize`, `service`, `router`, `seo`; page: `StreamsPage.tsx`, `streams.css`, `client.ts`, `view.ts`).
+It has its own API (`/api/streams`), its own styles (`sx-` classes) and no link anywhere; it is `noindex`, outside the sitemap, and outside the app layout.
+Every `.json` in `stream-data/` is shown automatically (the folder is listed through the data service / GitHub and remembered 5 minutes; `STREAMS_FILES` limits it, `STREAMS_EXCLUDE` hides some).
+Switch it on with `STREAMS_PAGE=1` (+ optional `STREAMS_PATH`, `STREAMS_KEY`, see `.env.example`) and redeploy; off → not in the build, 404.
+It reads `stream-data/<file>.json` through the central `dataFetch` (token, 10 s limit, GitHub backup) and shows each source separately: one failing file never hides the others.

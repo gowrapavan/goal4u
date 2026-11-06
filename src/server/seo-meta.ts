@@ -12,10 +12,11 @@ import { commonName } from '../lib/seo-text';
 import { matchBody, competitionBody, teamBody, listingBody, infoBody, playerBody } from './seo-body';
 import { playerFactsFrom, playerTitle, playerDescription, playerJsonLd } from './player-seo';
 import type { InfoSlug } from '../lib/site-pages';
+import { streamsSeoDecision } from '../streams/seo';
 
 export interface SeoDecision {
   status: 200 | 301 | 404; redirectTo?: string;
-  title: string; description: string; canonical?: string; robots: 'index,follow' | 'noindex,follow';
+  title: string; description: string; canonical?: string; robots: 'index,follow' | 'noindex,follow' | 'noindex,nofollow';
   ogType: string; image: string; jsonLd: object[];
   /** Crawlable page content for the first response (see seo-body.ts). */
   body?: string;
@@ -51,6 +52,8 @@ function matchDecision(m: SeoMatch, snap: SeoSnapshot, origin: string, canonical
 
 export async function resolveSeo(req: { path: string; search: string }, env: SeoEnv): Promise<SeoDecision> {
   const { origin, snapshot } = env; const { index, ready } = snapshot; const now = (env.now || Date.now)();
+  const secret = streamsSeoDecision(req.path);          // the optional secret stream page (src/streams): only when STREAMS_PAGE is on
+  if (secret) return secret;
   const r = classifyPath(req.path);
   const base = (t: { title: string; description: string }, canonical: string | null, extra: Partial<SeoDecision> = {}): SeoDecision => ({
     status: 200, ...t, canonical: canonical ? abs(origin, canonical) : undefined, robots: 'index,follow', ogType: 'website', image: DEFAULT_OG_IMAGE,

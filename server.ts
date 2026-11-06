@@ -13,6 +13,7 @@ import { locateMatch, lookupPlayerInfo } from "./src/server/data-api";
 import { createSeoStore } from "./src/server/seo-store";
 import { createPageHandler } from "./src/server/seo-page";
 import { siteOrigin, robotsTxt } from "./src/server/site-url";
+import { createStreamsRouter } from "./src/streams/router";
 import { allowedHosts, originVerdict, directVerdict, corsHeaders, API_SECURITY_HEADERS, MAX_URL_LENGTH } from "./src/server/api-guard";
 
 async function startServer() {
@@ -88,6 +89,9 @@ async function startServer() {
   // Mount Proxy & Sitemap Routes with correct scope
   app.use("/api/news", newsLimiter, newsRouter);
   
+  // Secret stream page API (404 unless STREAMS_PAGE is on; src/streams)
+  app.use("/api/streams", createStreamsRouter());
+
   // Data API
   app.use("/api/data", proxyLimiter, dataRouter);
 

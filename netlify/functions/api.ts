@@ -17,6 +17,7 @@ import type { AddressInfo } from 'node:net';
 import express from 'express';
 import newsRouter from '../../src/server/news-api';
 import dataRouter from '../../src/server/data-api';
+import { createStreamsRouter } from '../../src/streams/router';
 import { cdnCacheFor } from '../../src/server/api-cache';
 import { allowedHosts, originVerdict, directVerdict, makeLimiter, LIMITS, bucketOf, clientIp, corsHeaders, API_SECURITY_HEADERS, MAX_URL_LENGTH } from '../../src/server/api-guard';
 
@@ -30,6 +31,7 @@ function boot(): Promise<number> {
       app.disable('x-powered-by');
       app.use('/api/news', newsRouter);
       app.use('/api/data', dataRouter);
+      app.use('/api/streams', createStreamsRouter());      // secret stream page API (404 unless STREAMS_PAGE is on)
       // Unknown API paths are a JSON 404, never an HTML page.
       app.use('/api', (_req, res) => { res.status(404).json({ error: 'Not found' }); });
       app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

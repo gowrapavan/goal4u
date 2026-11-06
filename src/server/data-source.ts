@@ -41,12 +41,17 @@ export type DirEntry = { name: string; type: 'dir' | 'file' };
 export async function listDir(dir: string, f: typeof fetch = fetch, env: Record<string, string | undefined> = process.env): Promise<DirEntry[] | null> {
   const clean = String(dir).replace(/^\/+|\/+$/g, '');
   if (clean.split('/').includes('..') || !/^[\w\-./]*$/.test(clean)) return null;
+  const githubList = () => f(`https://api.github.com/repos/${GITHUB_REPO}/contents/${clean}?ref=main`, { headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'goal4u' }, signal: AbortSignal.timeout(10000) });
   try {
     const mirror = isMirror(env);
-    const url = mirror ? `${dataOrigin(env)}/_ls/${clean}` : `https://api.github.com/repos/${GITHUB_REPO}/contents/${clean}?ref=main`;
-    const r = mirror
-      ? await dataFetch(url, { timeoutMs: 10000 }, f)                                            // the mirror: Authorization header via the one central helper
-      : await f(url, { headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'goal4u' }, signal: AbortSignal.timeout(10000) });
+    let r: Response;
+    if (mirror) {
+      // The mirror first (Authorization header via the one central helper). Not answering within 10 s, or a 5xx → the GitHub listing instead.
+      try {
+        r = await dataFetch(`${dataOrigin(env)}/_ls/${clean}`, { timeoutMs: MIRROR_TIMEOUT_MS, retry: false, fallback: false }, f);
+        if (RETRY_STATUS.has(r.status)) { markMirrorDown(); r = await githubList(); }
+      } catch { markMirrorDown(); r = await githubList(); }
+    } else r = await githubList();
     if (!r.ok) return null;
     const j = await r.json();
     return Array.isArray(j) ? j.map((i: any) => ({ name: String(i.name), type: i.type === 'dir' ? 'dir' : 'file' })) : null;
@@ -134,17 +139,72 @@ export function withTokenQuery(url: string): string {
   return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(DATA_TOKEN)}`;
 }
 
-export interface DataFetchInit extends RequestInit { timeoutMs?: number; retry?: boolean; retryDelayMs?: number }
+/* ───────────────────────── backup source: GitHub, when the data service does not answer in time ─────────────────────────
+ * The data service (gowra-api on a free Render plan) sleeps after ~15 minutes without a visitor and needs 25-50 s to wake. A visitor must not wait for that:
+ *   • a request to a repo file (data/…, stream-data/…, public/…) that gets no answer within MIRROR_TIMEOUT_MS (10 s), a network error or a 502/503/504
+ *     is repeated at once against the same path of the GitHub data repo (the mirror is a 1:1 copy of it) — WITHOUT the access token, which never leaves the data service;
+ *   • the failure is remembered for MIRROR_COOLDOWN_MS (60 s): requests in that minute go straight to GitHub instead of each waiting 10 s again, and
+ *     one quiet request is sent to the sleeping service so it is awake when the minute is over;
+ *   • 401 (a wrong token) and 404 (no such file) are real answers: no fallback, so a configuration mistake still shows up as before;
+ *   • an answer that came from GitHub carries the header X-Goal4U-Data-Source: github-backup (the secret stream page shows it).
+ */
+export const MIRROR_TIMEOUT_MS = 10_000;
+export const MIRROR_COOLDOWN_MS = 60_000;
+export const BACKUP_HEADER = 'x-goal4u-data-source';
+let mirrorDownUntil = 0;
+export const mirrorIsCoolingDown = (now: number = Date.now()) => now < mirrorDownUntil;
+export const _resetMirrorState = () => { mirrorDownUntil = 0; };
+function markMirrorDown(now: number = Date.now()): void {
+  const first = !mirrorIsCoolingDown(now);
+  mirrorDownUntil = now + MIRROR_COOLDOWN_MS;
+  if (first) { console.warn('[data-source] the data service did not answer in time: using GitHub for the next minute'); wakeMirror(); }
+}
+/** One quiet request so a sleeping service starts waking. Fire and forget; never the token; switched off in tests (GOAL4U_NO_WAKE_PING=1). */
+function wakeMirror(): void {
+  if (!MIRROR_ACTIVE || process.env.GOAL4U_NO_WAKE_PING === '1') return;
+  try { void fetch(`${new URL(DATA_ORIGIN).origin}/`, { signal: AbortSignal.timeout(60_000) }).then((r) => r.body?.cancel(), () => {}); } catch { /* nothing to wake */ }
+}
+/** The GitHub address of a data-service URL, or null when it has no counterpart (not the data service, or a path the repo does not hold such as /_ls). */
+export function backupUrlFor(url: string): string | null {
+  if (!isDataServiceUrl(url)) return null;
+  const rest = url.slice(DATA_ORIGIN.length).replace(/^\/+/, '');
+  return /^(data|stream-data|public)\//.test(rest) ? `${GITHUB_RAW}/${rest}` : null;
+}
+
+export interface DataFetchInit extends RequestInit { timeoutMs?: number; retry?: boolean; retryDelayMs?: number; /** false = never use the GitHub backup for this call. */ fallback?: boolean }
 const RETRY_STATUS = new Set([502, 503, 504]);
 const isAbort = (e: any) => e?.name === 'AbortError' || e?.name === 'TimeoutError';
+const tagBackup = (r: Response): Response => {
+  const h = new Headers(r.headers); h.set(BACKUP_HEADER, 'github-backup');
+  return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
+};
 
 export async function dataFetch(url: string, init: DataFetchInit = {}, f: typeof fetch = fetch): Promise<Response> {
-  const { timeoutMs = 10_000, retry = true, retryDelayMs = 800, headers, signal, ...rest } = init;
+  const { timeoutMs = 10_000, retry = true, retryDelayMs = 800, fallback = true, headers, signal, ...rest } = init;
   assertSafeDataUrl(url);                                // before the token is attached or anything is sent
   const h = new Headers(headers);
   const auth = authHeaderFor(url);
   if (auth && !h.has('authorization')) h.set('Authorization', auth);
   warnConfigOnce(url);
+
+  const backup = fallback ? backupUrlFor(url) : null;
+  if (backup) {
+    assertSafeDataUrl(backup);
+    const gh = new Headers(h); gh.delete('authorization');                       // the token belongs to the data service only
+    const fromBackup = async (): Promise<Response> => tagBackup(await f(backup, { ...rest, headers: gh, signal: signal ?? AbortSignal.timeout(timeoutMs) }));
+    if (mirrorIsCoolingDown()) return fromBackup();
+    try {
+      const sig = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(Math.min(timeoutMs, MIRROR_TIMEOUT_MS))]);
+      const r = await f(url, { ...rest, headers: h, signal: sig });
+      if (!RETRY_STATUS.has(r.status)) { if (r.status === 401) noteDataAuthFailure(); return r; }
+      markMirrorDown();
+    } catch (e) {
+      if (signal?.aborted) throw e;                                              // the caller's own deadline passed: nothing left to try
+      markMirrorDown();
+    }
+    return fromBackup();
+  }
+
   const attempt = async (): Promise<Response> => {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
     try { return await f(url, { ...rest, headers: h, signal: signal ?? ctl.signal }); } finally { clearTimeout(t); }

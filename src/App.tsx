@@ -22,6 +22,11 @@ const Contact = lazy(() => import('./pages/Info').then((m) => ({ default: m.Cont
 const Privacy = lazy(() => import('./pages/Info').then((m) => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./pages/Info').then((m) => ({ default: m.Terms })));
 
+// Optional secret stream page (src/streams): the route and its code exist in the build only when STREAMS_PAGE is on. It sits OUTSIDE AppLayout: no header, footer or tabs.
+declare const __STREAMS_PAGE__: boolean | undefined;
+declare const __STREAMS_PATH__: string | undefined;
+const StreamsPage = typeof __STREAMS_PAGE__ !== 'undefined' && __STREAMS_PAGE__ ? lazy(() => import('./streams/StreamsPage')) : null;
+
 const ToStats = () => { const { slug, season } = useParams(); return <Navigate replace to={`/competition/${slug}${season ? '/' + season : ''}?tab=stats`} />; };
 const ToComp = () => { const { competition, season } = useParams(); return <Navigate replace to={`/competition/${competition}${season ? '/' + season : ''}`} />; };
 
@@ -32,6 +37,7 @@ export default function App() {
         <ScrollToTop />
         <Suspense fallback={<div className="min-h-[60vh]" />}>
           <Routes>
+            {StreamsPage && <Route path={typeof __STREAMS_PATH__ !== 'undefined' ? __STREAMS_PATH__ : 'streams'} element={<StreamsPage />} />}
             <Route path="/" element={<AppLayout />}>
               <Route index element={<Home />} />
               <Route path="matches" element={<Matches />} />
