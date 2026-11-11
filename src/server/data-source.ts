@@ -142,7 +142,7 @@ export function withTokenQuery(url: string): string {
 /* ───────────────────────── backup source: GitHub, when the data service does not answer in time ─────────────────────────
  * The data service (gowra-api on a free Render plan) sleeps after ~15 minutes without a visitor and needs 25-50 s to wake. A visitor must not wait for that:
  *   • a request to a repo file (data/…, stream-data/…, public/…) that gets no answer within MIRROR_TIMEOUT_MS (10 s), a network error or a 502/503/504
- *     is repeated at once against the same path of the GitHub data repo (the mirror is a 1:1 copy of it) — WITHOUT the access token, which never leaves the data service;
+ *     is repeated at once against the same path of the GitHub data repo (the mirror is a 1:1 copy of it) — WITHOUT the access token, which never leaves the data service (neither the header nor the ?token= the image route uses: the query string is dropped);
  *   • the failure is remembered for MIRROR_COOLDOWN_MS (60 s): requests in that minute go straight to GitHub instead of each waiting 10 s again, and
  *     one quiet request is sent to the sleeping service so it is awake when the minute is over;
  *   • 401 (a wrong token) and 404 (no such file) are real answers: no fallback, so a configuration mistake still shows up as before;
@@ -167,7 +167,8 @@ function wakeMirror(): void {
 /** The GitHub address of a data-service URL, or null when it has no counterpart (not the data service, or a path the repo does not hold such as /_ls). */
 export function backupUrlFor(url: string): string | null {
   if (!isDataServiceUrl(url)) return null;
-  const rest = url.slice(DATA_ORIGIN.length).replace(/^\/+/, '');
+  // Path only: the image route puts the token in the query (?token=…); GitHub must never see a query string, let alone the token.
+  const rest = url.slice(DATA_ORIGIN.length).replace(/^\/+/, '').split(/[?#]/)[0];
   return /^(data|stream-data|public)\//.test(rest) ? `${GITHUB_RAW}/${rest}` : null;
 }
 

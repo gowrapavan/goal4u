@@ -86,3 +86,12 @@ test('folder listing: the mirror failing gives the GitHub listing', async () => 
   assert.deepEqual(out, [{ name: 'PL', type: 'dir' }]);
   assert.match(urls[1], /^https:\/\/api\.github\.com\/repos\/gowrapavan\/goal4u-data\/contents\/data/);
 });
+
+test('the image route\'s ?token= never reaches GitHub: the backup address has no query string', async () => {
+  const withToken = `${BASE}/public/headshot/202283.png?token=${TOKEN}`;
+  assert.equal(backupUrlFor(withToken), `${GH}/public/headshot/202283.png`);
+  const s = scripted(503, 200); await quiet(() => dataFetch(withToken, {}, s.f));
+  assert.equal(s.calls[0].url, withToken);
+  assert.equal(s.calls[1].url, `${GH}/public/headshot/202283.png`);
+  assert.ok(!s.calls[1].url.includes(TOKEN) && !s.calls[1].url.includes('token'));
+});

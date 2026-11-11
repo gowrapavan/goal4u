@@ -884,7 +884,7 @@ router.get("/img/*", async (req, res) => {
   res.removeHeader("Pragma"); res.removeHeader("Expires"); res.removeHeader("Surrogate-Control");          // the router-wide "never cache" does not apply to pictures
   const fail = (status: number, text: string, cache = "no-store") => { res.set("Cache-Control", cache); return res.status(status).type("text/plain").send(text); };
   let up: globalThis.Response;
-  try { up = await dataFetch(withTokenQuery(`${PUBLIC_BASE}/${encodePath(rel)}`), { timeoutMs: 8000, headers: { Accept: "image/*" } }); }
+  try { up = await dataFetch(withTokenQuery(`${PUBLIC_BASE}/${encodePath(rel)}`), { timeoutMs: 5000, headers: { Accept: "image/*" } }); }       // 5 s for the data service, then the GitHub copy of the same picture (data-source.ts)
   catch { return fail(502, "Image unavailable"); }
   if (up.status === 404) return fail(404, "Not found", "public, max-age=300");                        // missing pictures are common (the page falls back to initials): remember that briefly
   if (!up.ok) return fail(up.status === 401 ? 503 : 502, "Image unavailable");
