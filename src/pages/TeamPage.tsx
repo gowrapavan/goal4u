@@ -46,6 +46,7 @@ export function TeamPage() {
   const comp = compBySlug(slug); const teamId = Number(sp.get('teamId'));
   const [tab, setTab] = useState<'overview' | 'matches' | 'squad'>('overview');
   const [filter, setFilter] = useState<'all' | 'league' | 'europe'>('all');
+  const [opp, setOpp] = useState(0);        // Matches tab: only games against this opponent (0 = all)
   const code = comp?.code || '';
   const isCL = code === 'CL';
 
@@ -159,7 +160,7 @@ export function TeamPage() {
               <section><h2 className="display text-3xl max-sm:text-2xl mb-3">{next && phase(next) === 'live' ? 'Playing now' : 'Next match'}{nextInEurope ? <span className="text-brand"> · Europe</span> : null}</h2>
                 {sched.loading ? <Skel className="h-40" /> : sched.error && !sched.data ? <ErrorState compact title="Fixtures couldn’t be loaded" onRetry={sched.retry} /> : next ? <VsMatchCard m={next} /> : <Empty icon={CalendarDays} title="No upcoming fixture scheduled" />}
               </section>
-              <section><div className="flex items-center justify-between mb-3"><h2 className="display text-3xl max-sm:text-2xl">Recent results</h2>{formAll && <Form value={formAll} />}</div>
+              <section><div className="flex items-center justify-between mb-3"><h2 className="display text-3xl max-sm:text-2xl">Recent results</h2><div className="flex items-center gap-3">{formAll && <Form value={formAll} />}<button type="button" className="text-sm font-semibold text-brand whitespace-nowrap" onClick={() => setTab('matches')}>All matches →</button></div></div>
                 <div className="card overflow-hidden divide-y divide-line/70">{sched.loading ? <Skel className="h-40" /> : sched.error && !sched.data ? <div className="p-4"><ErrorState compact title="Results couldn’t be loaded" onRetry={sched.retry} /></div> : last.length ? last.map((m) => <MatchRow key={m.id} m={m} showComp={inEurope} />) : <p className="p-5 text-sm text-muted">No matches played yet this season.</p>}</div>
               </section>
               {info.data?.trophies?.length > 0 && <section><h2 className="display text-3xl max-sm:text-2xl mb-3">Club honours</h2><div className="card p-4"><TrophyGrid items={info.data.trophies.slice(0, 12)} /></div></section>}
@@ -184,8 +185,12 @@ export function TeamPage() {
         )}
 
         {tab === 'matches' && (() => {
-          const results = visible.filter((m) => phase(m) === 'ft').reverse();       // newest first
-          const fixtures = visible.filter((m) => phase(m) !== 'ft');                // live / upcoming, soonest first
+          const opponents = new Map<number, string>();
+          for (const m of visible) { const o = m.homeTeam.id === teamId ? m.awayTeam : m.homeTeam; if (o?.id && !opponents.has(o.id)) opponents.set(o.id, o.shortName || o.name); }
+          const oppId = opponents.has(opp) ? opp : 0;           // a leftover choice from another club is ignored
+          const pool = oppId ? visible.filter((m) => m.homeTeam.id === oppId || m.awayTeam.id === oppId) : visible;
+          const results = pool.filter((m) => phase(m) === 'ft').reverse();          // newest first
+          const fixtures = pool.filter((m) => phase(m) !== 'ft');                   // live / upcoming, soonest first
           const f = formOf(visible, teamId, 10).split(',').filter(Boolean);
           const rec = { W: f.filter((x) => x === 'W').length, D: f.filter((x) => x === 'D').length, L: f.filter((x) => x === 'L').length };
           const item = (m: FMatch) => <div key={m.id}><p className="px-4 pt-2 text-[11px] font-semibold text-muted">{new Date(m.utcDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · {compByCode(m.code)?.short || m.code}{m.matchday ? ` · MD${m.matchday}` : ''}</p><MatchRow m={m} /></div>;
@@ -198,6 +203,15 @@ export function TeamPage() {
               )}
               {sched.loading ? <Skel className="h-80" /> : sched.error && !sched.data ? <ErrorState title="Fixtures couldn’t be loaded" hint="The match list didn’t arrive. This isn’t an empty season." onRetry={sched.retry} /> : !visible.length ? <Empty icon={CalendarDays} title="No fixtures found" /> : (
                 <div className="space-y-6">
+                  {opponents.size > 1 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select aria-label="Find a match against" value={oppId || ''} onChange={(e) => setOpp(Number(e.target.value) || 0)} className="chip !h-9 pr-6 text-sm">
+                        <option value="">All opponents</option>
+                        {[...opponents].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                      </select>
+                      {oppId ? <button className="chip" onClick={() => setOpp(0)}>Clear</button> : null}
+                    </div>
+                  )}
                   {f.length > 0 && (
                     <div className="card p-4 flex flex-wrap items-center gap-x-5 gap-y-2">
                       <div><p className="text-[11px] font-semibold text-muted mb-1">Form · last {f.length}</p><Form value={f.join(',')} max={10} /></div>

@@ -70,6 +70,19 @@ export function Competition() {
     return { keys, current };
   }, [all.data]);
   const md = Number(sp.get('md')) || days.current;
+  // "Find a team": every match of one club in this competition (newest result first, then what is still to come), without paging through matchdays.
+  const teamId = Number(sp.get('team')) || 0;
+  const teams = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const x of all.data || []) for (const t of [x.homeTeam, x.awayTeam]) if (t?.id && !m.has(t.id)) m.set(t.id, t.shortName || t.name);
+    return [...m].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [all.data]);
+  const teamView = useMemo(() => {
+    if (!teamId) return null;
+    const mine = (all.data || []).filter((x) => x.homeTeam?.id === teamId || x.awayTeam?.id === teamId).sort((a, b) => a.utcDate.localeCompare(b.utcDate));
+    return { results: mine.filter((x) => phase(x) === 'ft').reverse(), fixtures: mine.filter((x) => phase(x) !== 'ft') };
+  }, [all.data, teamId]);
+  const setTeam = (v: string) => { const n = new URLSearchParams(sp); v ? n.set('team', v) : n.delete('team'); setSp(n, { replace: true }); };
   const mdRow = useCenterActive(md);      // mobile: keep the selected matchday centred
   const flatRows = useMemo(() => (tables.data || []).flatMap((t) => t.table), [tables.data]);
   const insights = useMemo(() => buildInsights(flatRows, scorers.data || []), [flatRows, scorers.data]);
@@ -179,14 +192,32 @@ export function Competition() {
         {tab === 'matches' && (
           all.loading ? <Skel className="h-80" /> : all.error && !all.data ? <ErrorState title="Fixtures couldn’t be loaded" hint="The match list didn’t arrive. This isn’t an empty season." onRetry={all.retry} /> : days.keys.length ? (
             <div>
-              <div ref={mdRow} className="scroll-x snap-none gap-2 mb-4 -mx-4 px-4 lg:mx-0 lg:px-0">
-                {days.keys.map((k) => <button key={k} className="chip" aria-pressed={k === md} onClick={() => setParam('md', String(k))}>{k === 0 ? 'Knockouts' : `MD ${k}`}</button>)}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <select aria-label="Find a team’s matches" value={teamId || ''} onChange={(e) => setTeam(e.target.value)} className="chip !h-9 pr-6 text-sm">
+                  <option value="">All teams</option>
+                  {teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                </select>
+                {teamId ? <button className="chip" onClick={() => setTeam('')}>Back to matchdays</button> : null}
               </div>
-              <div className="grid lg:grid-cols-2 2xl:grid-cols-3 gap-3 items-start">
-                {mdMatches.map((m) => (
-                  <div key={m.id} className="card overflow-hidden"><p className="px-4 pt-2.5 text-[11px] font-semibold text-muted">{dayLabel(m.utcDate)}</p><MatchRow m={m} /></div>
-                ))}
-              </div>
+              {teamView ? (
+                <div className="space-y-6 max-w-4xl">
+                  {teamView.fixtures.length > 0 && <section><h2 className="display text-xl sm:text-2xl mb-2">{teamView.fixtures.some((x) => phase(x) === 'live') ? 'Live & upcoming' : 'Upcoming'}</h2><div className="card overflow-hidden divide-y divide-line/70">{teamView.fixtures.map((m) => <div key={m.id}><p className="px-4 pt-2.5 text-[11px] font-semibold text-muted">{dayLabel(m.utcDate)}{m.matchday ? ` · MD ${m.matchday}` : ''}</p><MatchRow m={m} /></div>)}</div></section>}
+                  <section><h2 className="display text-xl sm:text-2xl mb-2">Results</h2>
+                    {teamView.results.length ? <div className="card overflow-hidden divide-y divide-line/70">{teamView.results.map((m) => <div key={m.id}><p className="px-4 pt-2.5 text-[11px] font-semibold text-muted">{dayLabel(m.utcDate)}{m.matchday ? ` · MD ${m.matchday}` : ''}</p><MatchRow m={m} /></div>)}</div> : <p className="card p-5 text-sm text-muted">No matches played yet this season.</p>}
+                  </section>
+                </div>
+              ) : (
+                <>
+                  <div ref={mdRow} className="scroll-x snap-none gap-2 mb-4 -mx-4 px-4 lg:mx-0 lg:px-0">
+                    {days.keys.map((k) => <button key={k} className="chip" aria-pressed={k === md} onClick={() => setParam('md', String(k))}>{k === 0 ? 'Knockouts' : `MD ${k}`}</button>)}
+                  </div>
+                  <div className="grid lg:grid-cols-2 2xl:grid-cols-3 gap-3 items-start">
+                    {mdMatches.map((m) => (
+                      <div key={m.id} className="card overflow-hidden"><p className="px-4 pt-2.5 text-[11px] font-semibold text-muted">{dayLabel(m.utcDate)}</p><MatchRow m={m} /></div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           ) : <Empty title="No fixtures published" />
         )}

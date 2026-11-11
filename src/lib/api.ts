@@ -1,4 +1,5 @@
 import { publicUrl } from './public-files';
+import { feedKey } from './feed-key';
 import { getJSON } from './http';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -50,7 +51,13 @@ export function getFeed(opts: { from?: string; to?: string; codes?: string[]; se
   if (opts.codes?.length) q.set('codes', opts.codes.join(','));
   if (opts.season) q.set('season', opts.season);
   const url = `/api/data/feed?${q}`;
-  return cached(url, async () => (await getJSON(url)).matches as FMatch[]);
+  const want = feedKey(opts.codes, opts.from, opts.to, opts.season);
+  return cached(url, async () => {
+    let r = await getJSON(url);
+    // The answer says which request it belongs to. A different one means a shared cache gave us someone else's copy: ask again under a unique address.
+    if (typeof r?.key === 'string' && r.key !== want) r = await getJSON(`${url}${q.toString() ? '&' : ''}_r=${Date.now().toString(36)}`);
+    return r.matches as FMatch[];
+  });
 }
 export type StatsStatus = {
   state: AssociationState; reasons: string[]; source: string; droppedStats: string[];

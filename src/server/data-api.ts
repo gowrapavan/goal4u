@@ -17,6 +17,7 @@ import { appearanceFrom, analyseFormation, type Appearance } from "./team-format
 import { buildRelated, rosterOf, pickNationalFile, normName } from "./related-players";
 import { loadCompetitions } from "./competitions-source";
 import { safeCode, safeId, safeSeason, safeSquadFile, safeDate, safeCodeList, safeImagePath, encodePath, qs, capMap } from "./safe-input";
+import { feedKey } from "../lib/feed-key";
 import { DATA_BASE, STREAM_BASE, SHORTS_BASE, PUBLIC_BASE, listDir, dataFetch, dataAuthGuard, withTokenQuery } from "./data-source";
 
 const router = express.Router();
@@ -1111,7 +1112,7 @@ router.get("/feed", async (req, res) => {
   const season = req.query.season ? String(req.query.season) : undefined;
   // The repo snapshot can lag behind the match: bring fixtures that are under way (or just over) forward from the live source.
   const feed = await loadFeed(codes, from, to, season);
-  res.json({ matches: await withBudget(applyLiveOverlay(feed), 1500, () => markOpenUnverified(feed)) });      // the live source may take its time: the page does not wait for it
+  res.json({ key: feedKey(asked, from, to, season), matches: await withBudget(applyLiveOverlay(feed), 1500, () => markOpenUnverified(feed)) });      // the live source may take its time: the page does not wait for it
 });
 
 // ── Match lookup helpers (season-aware, cached, no repeated reads of the same file) ──
