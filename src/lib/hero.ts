@@ -19,6 +19,10 @@ const RANK = new Map(PRIORITY_CLUBS.map((c, i) => [c.id, i]));
 const COMP_ORDER = ['CL', 'PL', 'PD', 'SA', 'BL1', 'FL1', 'ELC'];
 
 export const HERO_HORIZON_DAYS = 7;
+/** How far ahead the home page looks when its normal window (8 days) holds nothing still to be played. */
+export const LOOK_AHEAD_DAYS = 60;
+/** True when something is live, under way or still to come. False in an international break / off-season window: only finished games. */
+export const hasOpenMatch = (ms: StateMatch[], now: number = Date.now()): boolean => ms.some((m) => ['live', 'started', 'upcoming'].includes(phase(m, now)));
 export const TIE_WINDOW_MS = 3 * 3600_000;
 
 export type HeroMatch = StateMatch & { code: string };

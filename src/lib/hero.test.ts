@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pickHero } from './hero.ts';
+import { pickHero, hasOpenMatch } from './hero.ts';
 
 const NOW = Date.parse('2026-10-12T12:00:00Z');
 const at = (h: number) => new Date(NOW + h * 3600_000).toISOString();
@@ -47,4 +47,16 @@ test('empty input → undefined; only results → latest result', () => {
   assert.equal(pickHero([], NOW), undefined);
   const r1 = mk(OTHER1, OTHER2, -50, 'FINISHED'), r2 = mk(OTHER1, OTHER2, -10, 'FINISHED');
   assert.equal(pickHero([r1, r2], NOW), r2);
+});
+
+test('look-ahead: a window that holds only finished games (international break) asks for more; any open match does not', () => {
+  const done = mk(RM, OTHER1, -48, 'FINISHED', 'PD'), done2 = mk(FCB, OTHER2, -72, 'FINISHED', 'PD');
+  assert.equal(hasOpenMatch([done, done2], NOW), false);
+  assert.equal(hasOpenMatch([], NOW), false);
+  assert.equal(hasOpenMatch([done, mk(RM, OTHER1, 24 * 7)], NOW), true);                  // still to come
+  assert.equal(hasOpenMatch([done, mk(RM, OTHER1, -1, 'IN_PLAY')], NOW), true);           // live
+});
+test('after the look-ahead, the next real fixture leads instead of the last result (RM on the 22nd, nothing before)', () => {
+  const last = mk(ATM, FCB, -50, 'FINISHED', 'PD'); const rm = mk(RM, OTHER1, 24 * 11, 'TIMED', 'PD');
+  assert.equal(pickHero([last, rm], NOW), rm);
 });

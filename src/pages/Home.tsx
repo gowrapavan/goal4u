@@ -8,7 +8,7 @@ import { STATIC_SEO } from '../lib/seo-text';
 import { Crest, Skel, SectionHead, MatchRow, VideoCard, VideoThumb, ShortCard, useVideoPlayer, Empty, cx } from '../components/ui';
 import { Banner } from '../components/Banner';
 import { ErrorState, SlowNetworkIndicator } from '../components/states';
-import { pickHero } from '../lib/hero';
+import { pickHero, hasOpenMatch, LOOK_AHEAD_DAYS } from '../lib/hero';
 import { VsMatchCard, VsCenter, StatusChip } from '../components/MatchCard';
 import { ValueLeaders } from '../components/Values';
 import { NewsThumb, NewsMeta, NewsTag, Article, ext } from '../components/NewsParts';
@@ -194,7 +194,14 @@ function LeagueSnapshot() {
 
 export function Home() {
   const today = useMemo(() => new Date(), []);
-  const feed = useAsync(() => getFeed({ from: ymd(addDays(today, -8)), to: ymd(addDays(today, 8)) }), []);
+  // Last 8 days + next 8. When NOTHING is live, under way or still to come in that window (international break, winter break, off-season) the home page would
+  // show only finished games under "Next up": then the next 8-60 days are fetched too, so the real next fixtures lead.
+  const feed = useAsync(async () => {
+    const base = await getFeed({ from: ymd(addDays(today, -8)), to: ymd(addDays(today, 8)) });
+    if (hasOpenMatch(base)) return base;
+    const later = await getFeed({ from: ymd(addDays(today, 8)), to: ymd(addDays(today, LOOK_AHEAD_DAYS)) }).catch(() => [] as FMatch[]);
+    return [...base, ...later];
+  }, []);
   const vids = useAsync(() => getVideos(12), []);
   const shorts = useAsync(() => getShorts(24), []);
   const { play, modal } = useVideoPlayer();

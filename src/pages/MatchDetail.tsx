@@ -58,8 +58,9 @@ export function MatchDetail() {
   // Next fixtures for both teams (league + Champions League), de-duplicated. Skipped for archived-season pages.
   const nextFx = useAsync(async () => {
     const mm = b.data?.match; if (!mm || season) return null;
-    const codes = [...new Set([b.data.code as string, 'CL'])];
-    const ms = uniqueMatches(await getFeed({ codes, from: ymd(new Date()), to: ymd(addDays(new Date(), 90)) })).filter((x) => isOpen(x) && x.id !== mm.id);
+    // ALL competitions, not just this match's one + CL: a Champions League page for Real Madrid must also list their La Liga games. The next 45 days are the
+    // same request the Matches page makes, so a visitor who has been there gets it from the client cache.
+    const ms = uniqueMatches(await getFeed({ from: ymd(new Date()), to: ymd(addDays(new Date(), 45)) })).filter((x) => isOpen(x) && x.id !== mm.id);
     const pick = (tid: number) => ms.filter((x) => x.homeTeam.id === tid || x.awayTeam.id === tid).slice(0, 3);
     return { home: pick(mm.homeTeam.id), away: pick(mm.awayTeam.id) };
   }, [id, season, b.data?.code, !!b.data?.match]);

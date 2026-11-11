@@ -52,7 +52,7 @@ function Group({ code, items, current, showDay }: { code: string; items: FMatch[
 export function MatchSidebar({ current, currentId, currentCode, homeId, awayId, season }: { current?: FMatch; currentId: number; currentCode: string; homeId: number; awayId: number; season?: string }) {
   const [tick, setTick] = useState(0); const [all, setAll] = useState(false);
   useEffect(() => { const t = setInterval(() => { if (!document.hidden) setTick((x) => x + 1); }, 45_000); return () => clearInterval(t); }, []);
-  const feed = useAsync(() => getFeed({ codes: CODES, from: ymd(addDays(new Date(), -1)), to: ymd(addDays(new Date(), 5)) }), [tick]);
+  const feed = useAsync(() => getFeed({ codes: CODES, from: ymd(addDays(new Date(), -1)), to: ymd(addDays(new Date(), 14)) }), [tick]);
   // a failed background refresh keeps the list that was already on screen
   const lastFeed = useRef<FMatch[] | null>(null); if (feed.data) lastFeed.current = feed.data;
   const feedData = feed.data ?? lastFeed.current;
