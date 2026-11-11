@@ -279,21 +279,28 @@ export function Home() {
       {/* Results */}
       <section>
         <SectionHead title="Latest results" href="/matches" />
-        <div className="card overflow-hidden divide-y divide-line">
-          {feed.loading ? <div className="p-4 space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skel key={i} className="h-12" />)}</div>
-            : feed.error && !feed.data ? <div className="p-4"><ErrorState compact title="Results couldn’t be loaded" onRetry={feed.retry} /></div>
-            : results.length ? groupByDay(results).reverse().map(([day, ms]) => (
-              <div key={day}>
+        {/* One day per card, two cards side by side on wide screens: a score row never has to stretch across the whole page */}
+        {feed.loading || (feed.error && !feed.data) || !results.length ? (
+          <div className="card overflow-hidden">
+            {feed.loading ? <div className="p-4 space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skel key={i} className="h-12" />)}</div>
+              : feed.error && !feed.data ? <div className="p-4"><ErrorState compact title="Results couldn’t be loaded" onRetry={feed.retry} /></div>
+              : <div className="p-6 text-center text-muted text-sm">No recent results in the last 8 days.</div>}
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-2 gap-3 items-start">
+            {groupByDay(results).reverse().map(([day, ms]) => (
+              <div key={day} className="card overflow-hidden">
                 <p className="px-4 py-2 text-xs font-bold text-muted bg-surface-2/50">{dayLabel(ms[0].utcDate)}</p>
                 <div className="divide-y divide-line/70">{ms.map((m) => <MatchRow key={m.id} m={m} showComp />)}</div>
-              </div>))
-              : <div className="p-6 text-center text-muted text-sm">No recent results in the last 8 days.</div>}
-          {!feed.loading && allResults.length > collapsed.length && (
-            <button type="button" onClick={() => setShowAll((v) => !v)} className="w-full py-3 text-sm font-semibold text-brand hover:bg-surface-2/60 transition-colors" aria-expanded={showAll}>
-              {showAll ? 'Show fewer results' : `Show all ${allResults.length} results from the last 3 days`}
-            </button>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {!feed.loading && allResults.length > collapsed.length && (
+          <button type="button" onClick={() => setShowAll((v) => !v)} className="card w-full mt-3 py-3 text-sm font-semibold text-brand hover:bg-surface-2/60 transition-colors" aria-expanded={showAll}>
+            {showAll ? 'Show fewer results' : `Show all ${allResults.length} results from the last 3 days`}
+          </button>
+        )}
       </section>
 
       {/* Highlights */}

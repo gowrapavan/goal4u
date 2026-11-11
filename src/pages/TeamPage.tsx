@@ -165,7 +165,7 @@ export function TeamPage() {
               </section>
               {info.data?.trophies?.length > 0 && <section><h2 className="display text-3xl max-sm:text-2xl mb-3">Club honours</h2><div className="card p-4"><TrophyGrid items={info.data.trophies.slice(0, 12)} /></div></section>}
               {perf.length > 0 && <section><h2 className="display text-3xl max-sm:text-2xl mb-3">Top performers</h2>
-                <div className="grid sm:grid-cols-3 gap-3">{perf.map((s) => <Link key={s.player.id} to={`/player/${s.player.id}`} className="card p-4 max-sm:p-3 hover:border-ink transition-colors"><p className="display text-5xl max-sm:text-4xl text-brand">{s.goals}</p><p className="font-semibold mt-1 truncate">{s.player.name}</p><p className="text-xs text-muted">goals · {s.assists} assists</p>{s.split.length > 1 && <p className="text-[11px] text-muted mt-1">{s.split.map((x) => `${compByCode(x.c)?.short || x.c} ${x.g}`).join(' · ')}</p>}</Link>)}</div></section>}
+                <div className="grid sm:grid-cols-3 gap-3">{perf.map((s) => <Link key={s.player.id} to={`/player/${s.player.id}`} className="card p-4 max-sm:p-3 hover:border-ink transition-colors flex items-center gap-3"><PlayerImg id={s.player.id} alt="" size={64} className="w-16 h-16 max-sm:w-14 max-sm:h-14 rounded-full object-cover object-top bg-surface-2 shrink-0" fallback={<span className="w-16 h-16 max-sm:w-14 max-sm:h-14 rounded-full bg-surface-2 grid place-items-center text-sm font-bold text-muted shrink-0">{String(s.player.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</span>} /><div className="min-w-0"><p className="display text-5xl max-sm:text-4xl text-brand leading-none">{s.goals}</p><p className="font-semibold mt-1 truncate">{s.player.name}</p><p className="text-xs text-muted">goals · {s.assists} assists</p>{s.split.length > 1 && <p className="text-[11px] text-muted mt-1">{s.split.map((x) => `${compByCode(x.c)?.short || x.c} ${x.g}`).join(' · ')}</p>}</div></Link>)}</div></section>}
             </div>
             <aside className="space-y-5 min-w-0">
               <section><h2 className="display text-3xl max-sm:text-2xl mb-3">{leagueComp?.short} table</h2>
@@ -195,7 +195,7 @@ export function TeamPage() {
           const rec = { W: f.filter((x) => x === 'W').length, D: f.filter((x) => x === 'D').length, L: f.filter((x) => x === 'L').length };
           const item = (m: FMatch) => <div key={m.id}><p className="px-4 pt-2 text-[11px] font-semibold text-muted">{new Date(m.utcDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · {compByCode(m.code)?.short || m.code}{m.matchday ? ` · MD${m.matchday}` : ''}</p><MatchRow m={m} /></div>;
           return (
-            <div className="max-w-4xl">
+            <div className="max-w-6xl">
               {inEurope && (
                 <div className="scroll-x gap-2 mb-4 -mx-4 px-4 lg:mx-0 lg:px-0">
                   {([['all', 'All competitions'], ['league', leagueComp?.short || ''], ['europe', 'Champions League']] as const).map(([k, l]) => <button key={k} className="chip" aria-pressed={filter === k} onClick={() => setFilter(k)}>{k === 'europe' && <LeagueLogo comp={compByCode('CL')} size={16} />}{l}</button>)}
@@ -218,10 +218,13 @@ export function TeamPage() {
                       <p className="text-sm text-muted"><span className="font-bold text-ink num">{rec.W}</span> won · <span className="font-bold text-ink num">{rec.D}</span> drawn · <span className="font-bold text-ink num">{rec.L}</span> lost</p>
                     </div>
                   )}
-                  {fixtures.length > 0 && <section><h2 className="display text-xl sm:text-2xl mb-2">{fixtures.some((m) => phase(m) === 'live') ? 'Live & upcoming' : 'Upcoming'}</h2><div className="card overflow-hidden divide-y divide-line/70">{fixtures.map(item)}</div></section>}
-                  <section><h2 className="display text-xl sm:text-2xl mb-2">Recent results</h2>
-                    {results.length ? <div className="card overflow-hidden divide-y divide-line/70">{results.map(item)}</div> : <p className="card p-5 text-sm text-muted">No matches played yet this season.</p>}
-                  </section>
+                  {/* Upcoming on the left, results on the right (one column on phones): the latest results are on screen without scrolling past the fixtures */}
+                  <div className={cx('grid gap-6 items-start', fixtures.length > 0 && 'lg:grid-cols-2')}>
+                    {fixtures.length > 0 && <section><h2 className="display text-xl sm:text-2xl mb-2">{fixtures.some((m) => phase(m) === 'live') ? 'Live & upcoming' : 'Upcoming'}</h2><div className="card overflow-hidden divide-y divide-line/70">{fixtures.map(item)}</div></section>}
+                    <section><h2 className="display text-xl sm:text-2xl mb-2">Recent results</h2>
+                      {results.length ? <div className="card overflow-hidden divide-y divide-line/70">{results.map(item)}</div> : <p className="card p-5 text-sm text-muted">No matches played yet this season.</p>}
+                    </section>
+                  </div>
                 </div>
               )}
             </div>

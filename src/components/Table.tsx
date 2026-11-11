@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Crest, Form, cx } from './ui';
+import { Crest, Form, PlayerImg, cx } from './ui';
 import { teamHref } from '../lib/api';
 
 export function StandingsTable({ rows, code, compact, highlight, qualify = 4, relegate = 3 }: {
@@ -56,7 +56,10 @@ export function ScorerList({ rows, code, limit = 10, metric = 'goals' }: { rows:
       {list.map((s, i) => (
         <li key={s.player.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-line/70 last:border-0">
           <span className="w-5 text-center text-sm font-bold text-muted num">{i + 1}</span>
-          <Crest src={s.team?.crest} name={s.team?.name} size={22} />
+          <span className="relative shrink-0">
+            <PlayerImg id={s.player.id} alt="" size={36} className="w-9 h-9 rounded-full object-cover object-top bg-surface-2" fallback={<Crest src={s.team?.crest} name={s.team?.name} size={30} />} />
+            <span className="absolute -bottom-1 -right-1 rounded-full bg-surface p-px shadow-sm"><Crest src={s.team?.crest} name={s.team?.name} size={15} /></span>
+          </span>
           <Link to={`/player/${s.player.id}`} className="flex-1 min-w-0 hover:text-brand">
             <span className="block font-semibold truncate text-[14px]">{s.player.name}</span>
             <span className="block text-[11.5px] text-muted truncate">{s.team?.shortName || s.team?.name} · {s.playedMatches ?? 0} apps</span>

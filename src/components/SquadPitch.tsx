@@ -43,17 +43,17 @@ function PitchLines() {
 
 function Token({ s, crest }: { s: FilledSlot; crest: string | null }) {
   const style = { left: `${s.x}%`, top: `${s.y}%` };
-  const base = 'absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center w-[4.5rem] sm:w-[6rem] transition-all duration-500';
-  if (!s.player) return <span className={base} style={style}><span className="w-[3.1rem] h-[3.1rem] sm:w-16 sm:h-16 rounded-full border-2 border-dashed border-white/60 grid place-items-center text-white/70 text-lg">?</span></span>;
+  const base = 'absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center w-[clamp(3.4rem,18cqw,6rem)] transition-all duration-500';
+  if (!s.player) return <span className={base} style={style}><span className="w-[clamp(2.3rem,11.5cqw,4rem)] h-[clamp(2.3rem,11.5cqw,4rem)] rounded-full border-2 border-dashed border-white/60 grid place-items-center text-white/70 text-lg">?</span></span>;
   const p = s.player;
   return (
     <Link to={`/player/${p.id}`} className={cx(base, 'group')} style={style} title={`${p.name}${p.role ? ` · ${p.role}` : ''}`}>
       <span className="relative">
-        <Photo p={p} className="w-[3.1rem] h-[3.1rem] sm:w-16 sm:h-16 border-[3px] border-white group-hover:scale-105 transition-transform" />
-        {crest && <img src={crest} alt="" width={20} height={20} loading="lazy" className="absolute -top-1 -right-1.5 w-[18px] h-[18px] sm:w-5 sm:h-5 object-contain rounded-full bg-white p-px shadow" />}
-        {p.number && <span className="absolute -bottom-1 -left-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#0b1437] text-white text-[10px] font-bold grid place-items-center num ring-1 ring-white/70">{p.number}</span>}
+        <Photo p={p} className="w-[clamp(2.3rem,11.5cqw,4rem)] h-[clamp(2.3rem,11.5cqw,4rem)] border-[3px] border-white group-hover:scale-105 transition-transform" />
+        {crest && <img src={crest} alt="" width={20} height={20} loading="lazy" className="absolute -top-1 -right-1.5 w-[clamp(14px,3.6cqw,20px)] h-[clamp(14px,3.6cqw,20px)] object-contain rounded-full bg-white p-px shadow" />}
+        {p.number && <span className="absolute -bottom-1 -left-1.5 min-w-[clamp(14px,3.6cqw,18px)] h-[clamp(14px,3.6cqw,18px)] px-1 rounded-full bg-[#0b1437] text-white text-[clamp(8px,1.9cqw,10px)] font-bold grid place-items-center num ring-1 ring-white/70">{p.number}</span>}
       </span>
-      <span className="mt-1.5 max-w-full truncate rounded-full bg-black/60 px-2 py-[2px] text-[10px] sm:text-xs font-bold text-white leading-tight backdrop-blur-sm group-hover:bg-black/80">{shortName(p.name)}</span>
+      <span className="mt-1.5 max-w-full truncate rounded-full bg-black/60 px-2 py-[2px] text-[clamp(9px,2.2cqw,12px)] font-bold text-white leading-tight backdrop-blur-sm group-hover:bg-black/80">{p.name?.trim() ? shortName(p.name) : p.number ? `#${p.number}` : '—'}</span>
     </Link>
   );
 }
@@ -113,8 +113,9 @@ export function SquadPitch({ teamId, teamName, crest, squad }: { teamId: number;
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] gap-5 lg:gap-8 p-4 sm:p-6 items-start">
-        <div className="relative w-full max-w-[34rem] mx-auto lg:mx-0 aspect-[4/5] rounded-2xl overflow-hidden shadow-inner ring-1 ring-black/10"
-          style={{ background: 'repeating-linear-gradient(180deg,#1c8450 0 12.5%,#23965a 12.5% 25%)' }}>
+        {/* The whole pitch fits on screen: its width is limited by the window height (4:5 ratio, minus the sticky header and padding), and the players scale with it. */}
+        <div className="relative mx-auto lg:mx-0 aspect-[4/5] rounded-2xl overflow-hidden shadow-inner ring-1 ring-black/10 [container-type:inline-size]"
+          style={{ width: 'min(100%, 34rem, calc((100svh - 11rem) * 0.8))', minWidth: 'min(100%, 17rem)', background: 'repeating-linear-gradient(180deg,#1c8450 0 12.5%,#23965a 12.5% 25%)' }}>
           <PitchLines />
           {xi.slots.map((s) => <Token key={s.key} s={s} crest={crest} />)}
         </div>

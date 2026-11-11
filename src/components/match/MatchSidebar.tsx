@@ -7,6 +7,7 @@ import { Crest, Skel, cx } from '../ui';
 import { addDays, dayLabel, getFeed, getTables, groupByComp, hasScore, kickoff, matchHref, phase, scoreOf, tn, uniqueMatches, ymd, useAsync, type FMatch } from '../../lib/api';
 import { ALL_COMPS, COMPS, TOURNAMENTS, compByCode } from '../../lib/competitions';
 import { roundShort } from '../../lib/match-round';
+import { dayChip } from '../../lib/day-chip';
 
 const CODES = ALL_COMPS.map((c) => c.code);
 const MAX_ROWS = 10;
@@ -17,7 +18,7 @@ function Status({ m, showDay }: { m: FMatch; showDay: boolean }) {
   if (p === 'ft') return <span className="text-[11px] font-semibold text-muted">FT</span>;
   if (p === 'postponed') return <span className="text-[11px] font-semibold text-muted">PP</span>;
   if (p === 'started' || p === 'pending') return <span className="text-[11px] font-semibold text-muted">{p === 'started' ? 'KO' : '—'}</span>;
-  return <span className="inline-flex flex-col items-center leading-tight">{showDay && <span className="text-[10px] text-muted font-semibold">{new Date(m.utcDate).toLocaleDateString(undefined, { weekday: 'short' })}</span>}<span className="num text-xs font-bold">{kickoff(m.utcDate)}</span></span>;
+  return <span className="inline-flex flex-col items-center leading-tight">{showDay && <span className="text-[10px] text-muted font-semibold whitespace-nowrap">{dayChip(m.utcDate)}</span>}<span className="num text-xs font-bold">{kickoff(m.utcDate)}</span></span>;
 }
 
 function Row({ m, active, showDay }: { m: FMatch; active: boolean; showDay: boolean }) {
